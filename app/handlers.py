@@ -5,10 +5,13 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 import app.keyboards as kb
-from app.database.requests import (get_item_by_id, set_user, \
-                                    set_cart, get_cart, get_item_by_id, \
-                                        delete_item_from_cart, get_category_by_id, \
-                                            check_cart, check_items_in_category)
+from app.database.requests import (
+    get_item_by_id, set_user, 
+    set_cart, get_cart, get_item_by_id, 
+    delete_item_from_cart, get_category_by_id, 
+    check_cart, check_items_in_category,
+    clear_cart
+)
 from config import ADMINS
 
 
@@ -42,6 +45,11 @@ async def cmd_start(message: Message | CallbackQuery, state:FSMContext):
         await state.clear()
 
 
+@router.callback_query(F.data == 'contacts')
+async def contacts(callback: CallbackQuery):
+    await callback.message.answer('Наши контакты лялля', reply_markup=kb.to_main)
+
+
 @router.callback_query(Navigation.specific_category, F.data == 'to_categories')
 @router.callback_query(Navigation.custom_ordering, F.data == 'to_categories')
 @router.callback_query(F.data == 'catalog')
@@ -66,19 +74,38 @@ async def yours_order(callback: CallbackQuery, state: FSMContext):
                                 reply_markup=await kb.ordering(True))
 
 
+@router.callback_query(Navigation.specific_item, F.data == 'to_spec_category')
 @router.callback_query(Navigation.catalog, F.data.startswith('category_'))
 async def category(callback: CallbackQuery, state: FSMContext):
     await state.set_state(Navigation.specific_category)
-    category_id = int(callback.data.split('_')[1])
-    await state.update_data(category_id = category_id)
-    await callback.answer('')
-    if await check_items_in_category(category_id):
-        await callback.message.edit_text(f'Выберите товар',
-                                    reply_markup=await kb.items(category_id))
+    
+    if callback.data == 'to_spec_category':
+        data = await state.get_data()
+        category_id = data['category_id']
+        flag = True
     else:
-        chosen_category = await get_category_by_id(callback.data.split('_')[1])
-        await callback.message.edit_text(f'Мы изготовляем {chosen_category.name} только на заказ. Если хотите заказать их, это можно сделать на главной странице, нажав кнопку "На заказ" и выбрав "{chosen_category.name}"',
-                                        reply_markup=await kb.items(category_id))
+        category_id = int(callback.data.split('_')[1])
+        flag = False
+        
+    await state.update_data(category_id=category_id)
+    await callback.answer('')
+    chosen_category = await get_category_by_id(callback.data.split('_')[1])
+    items_kb = await kb.items(category_id)
+    
+    if await check_items_in_category(category_id):
+        msg_text = 'Выберите товар'
+        if flag:
+            await callback.message.answer(msg_text,
+                                        reply_markup=items_kb)
+        else:
+            await callback.message.edit_text(msg_text,
+                                        reply_markup=items_kb)
+    else:
+        msg_text = f'Мы изготовляем {chosen_category.name} только на заказ. Если хотите заказать их, это можно сделать на главной странице, нажав кнопку "На заказ" и выбрав "{chosen_category.name}"'
+        if flag:
+            await callback.message.answer(msg_text, reply_markup=items_kb)
+        else:
+            await callback.message.edit_text(msg_text, reply_markup=items_kb)
 
 
 @router.callback_query(Navigation.specific_category, F.data.startswith('item_'))
@@ -91,22 +118,12 @@ async def show_item(callback: CallbackQuery, state: FSMContext):
                                 reply_markup=await kb.cart(item.id))
 
 
-@router.callback_query(Navigation.specific_item, F.data == 'to_spec_category')
-async def to_spec_category(callback: CallbackQuery, state: FSMContext):
-    await state.set_state(Navigation.specific_category)
-    data = await state.get_data()
-    spec_category_id = data['category_id']
-    await callback.answer('')
-    await callback.message.answer('Выберите товар', reply_markup=await kb.items(spec_category_id))
-
-
 @router.callback_query(F.data.startswith('cart_'))
 async def add_to_cart(callback: CallbackQuery):
     if await set_cart(callback.from_user.id, callback.data.split('_')[1]):
         await callback.answer('Товар добавлен в корзину', show_alert=True)
     else:
         await callback.answer("Товар уже был добавлен", show_alert=True)
-
 
 
 async def format_product_count(count: int) -> str:
@@ -120,6 +137,8 @@ async def format_product_count(count: int) -> str:
 
 @router.callback_query(F.data == 'my_cart')
 async def my_cart(callback: CallbackQuery, state:FSMContext):
+    if await state.get_state() == Order.my_cart:
+        return
     await state.set_state(Order.my_cart)
     await callback.answer('')
     cart_full = await check_cart(callback.from_user.id)
@@ -188,7 +207,15 @@ async def order_items(callback: CallbackQuery, state: FSMContext):
         final_text += order_text + f'\nИтоговая сумма: {price}\n\nДля оплаты напишите: @i17bs43kzkp0\n\nБлагодарим за ваш заказ! Будем рады видеть вас снова!' 
         await callback.message.answer(final_text)
         await callback.message.answer('Вы вернулись в главное меню!', reply_markup=kb.main)
-        notification_text += f'\n\n{order_text}\nНа сумму: {price} руб.'
+        
+        notification_text += f'\n\n{order_text}\nНа сумму: {price} руб.\n\nДоставка: '
+        if int(price) < 1300:
+            notification_text += 'платная\n\nКолечко в подарок: Нет'
+        elif 1300 <= int(price) < 1500:
+            notification_text += 'бесплатная\n\nКолечко в подарок: Нет'
+        elif int(price) >= 1500:
+            notification_text += 'бесплатная\n\nКолечко в подарок: Да'
+
     else:
         data = await state.get_data()
         order_text = f'{data['yours_category']} на заказ'
@@ -196,7 +223,11 @@ async def order_items(callback: CallbackQuery, state: FSMContext):
         await callback.message.answer(final_text)
         await callback.message.answer('Вы вернулись в главное меню!', reply_markup=kb.main)
         notification_text += f'\n\n{order_text}'
+        
+    await clear_cart(callback.from_user.id)
+    
     for admin in ADMINS:
         await callback.message.bot.send_message(chat_id=admin, text=notification_text)
+        
     await state.clear()
 

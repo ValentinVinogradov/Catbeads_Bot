@@ -31,7 +31,8 @@ to_main = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='На
 edit = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Название', callback_data='edit_name'),
                                             InlineKeyboardButton(text="Описание", callback_data='edit_description')],
                                             [InlineKeyboardButton(text='Фото', callback_data='edit_photo'),
-                                            InlineKeyboardButton(text='Цена', callback_data='edit_price')]] ,
+                                            InlineKeyboardButton(text='Цена', callback_data='edit_price')],
+                                            [InlineKeyboardButton(text='Назад', callback_data='to_spec_category')]] ,
                                 resize_keyboard=True,
                                 input_field_placeholder='Выберите пункт меню')
 

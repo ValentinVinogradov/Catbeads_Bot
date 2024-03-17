@@ -82,6 +82,19 @@ async def delete_item_from_bot(item_id):
         await session.commit()
 
 
+async def delete_item_from_all_carts(item_id):
+    async with async_session() as session:
+        await session.execute(delete(Cart).where(Cart.item == item_id))
+        await session.commit()
+
+
+async def clear_cart(tg_id):
+    async with async_session() as session:
+        user = await session.scalar(select(User).where(User.tg_id == tg_id))
+        await session.execute(delete(Cart).where(Cart.user == user.id))
+        await session.commit()
+
+
 async def edit_item(data):
     async with async_session() as session:
         await session.execute(update(Item).where(Item.id == data['item_id']).values({data['field']:data['text']}))
