@@ -13,31 +13,53 @@ from app.database.requests import (
 
 
 main = InlineKeyboardMarkup(inline_keyboard=[
-                                            [InlineKeyboardButton(text='Каталог', 
-                                                                callback_data='catalog'),
-                                            InlineKeyboardButton(text='На заказ',
-                                                                callback_data='yours')],
-                                            [InlineKeyboardButton(text='Корзина', 
-                                                                callback_data='my_cart'),
-                                            InlineKeyboardButton(text='Контакты', 
-                                                                callback_data='contacts')]],
-                                resize_keyboard=True,
-                                input_field_placeholder='Выберите пункт меню')
+    [InlineKeyboardButton(text='Каталог', callback_data='catalog'),
+    InlineKeyboardButton(text='На заказ', callback_data='yours')],
+
+    [InlineKeyboardButton(text='Корзина', callback_data='my_cart'),
+    InlineKeyboardButton(text='Контакты', callback_data='contacts')]
+],
+    resize_keyboard=True,
+    input_field_placeholder='Выберите пункт меню')
 
 
-to_main = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='На главную', 
-                                                                    callback_data='to_main')]],
-                                resize_keyboard=True,
-                                input_field_placeholder='Выберите пункт меню')
+# to_main = InlineKeyboardMarkup(inline_keyboard=[
+#     [InlineKeyboardButton(text='На главную', callback_data='to_main')]],
+#     resize_keyboard=True,
+#     input_field_placeholder='Выберите пункт меню')
 
 
-edit = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Название', callback_data='edit_name'),
-                                            InlineKeyboardButton(text="Описание", callback_data='edit_description')],
-                                            [InlineKeyboardButton(text='Фото', callback_data='edit_photo'),
-                                            InlineKeyboardButton(text='Цена', callback_data='edit_price')],
-                                            [InlineKeyboardButton(text='Назад', callback_data='to_spec_category')]] ,
-                                resize_keyboard=True,
-                                input_field_placeholder='Выберите пункт меню')
+edit = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text='Название', callback_data='name'),
+    InlineKeyboardButton(text="Описание", callback_data='description')],
+
+    [InlineKeyboardButton(text='Фото',callback_data='photo'),
+    InlineKeyboardButton(text='Цена',callback_data='price')],
+
+    [InlineKeyboardButton(text='Назад',callback_data='to_spec_category')]
+],
+    resize_keyboard=True,
+    input_field_placeholder='Выберите пункт меню')
+
+
+apanel = InlineKeyboardMarkup(inline_keyboard=[
+    [InlineKeyboardButton(text='Создать рассылку', callback_data='newsletter')],
+    [InlineKeyboardButton(text='Добавить товар', callback_data='add_item')],
+    [InlineKeyboardButton(text='Изменить товар', callback_data='edit_item')],
+    [InlineKeyboardButton(text='Удалить товар', callback_data='delete_item')],
+    [InlineKeyboardButton(text='В главное меню', callback_data='to_main')]
+],
+    resize_keyboard=True,
+    input_field_placeholder='Выберите пункт меню')
+
+
+async def to_apanel_or_main(place_to: str):
+    keyboard = InlineKeyboardBuilder()
+    if place_to == 'to_main':
+        keyboard.add(InlineKeyboardButton(text='На главную', callback_data='to_main'))
+    else:
+        keyboard.add(InlineKeyboardButton(text='В панельку', callback_data='to_apanel'))
+    return keyboard.adjust(1).as_markup()
 
 
 async def confirmation(state: str):
@@ -86,13 +108,16 @@ async def cart(cart_id):
     return keyboard.adjust(2).as_markup()
 
 
-async def categories():
+async def categories(place_from:str = 'catalog'):
     all_categories = await get_categories()
     keyboard = InlineKeyboardBuilder()
     for category in all_categories:
         keyboard.add(InlineKeyboardButton(text=category.name, 
                                         callback_data=f'category_{category.id}'))
-    keyboard.add(InlineKeyboardButton(text='Назад', callback_data='to_main'))
+    if place_from == 'catalog':
+        keyboard.add(InlineKeyboardButton(text='Назад', callback_data='to_main'))
+    else:
+        keyboard.add(InlineKeyboardButton(text='Назад', callback_data='to_apanel'))
     return keyboard.adjust(2).as_markup()
 
 

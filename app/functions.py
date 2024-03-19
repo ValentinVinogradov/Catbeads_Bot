@@ -1,5 +1,6 @@
 from re import search
 
+
 async def format_product_count(count: int) -> str:
     if count % 10 == 1 and count % 100 != 11:
         return f"{count} товар"
@@ -13,12 +14,6 @@ async def format_promo(promo) -> int:
     return int(search(r'\d+', promo).group())
 
 
-async def access_discount(value, discount) -> float:
-    return value * (await format_promo(discount) / 100)
-
-
-async def normal_price(price: int | float) -> int:
-    if isinstance(price, float):
-        return int(price) + 1
-    return price
-
+async def access_discount(value: int, discount: str) -> int:
+    result_price = value - value * round(await format_promo(discount) / 100, 2)
+    return int(result_price) + 1 if result_price % 1 != 0 else int(result_price)
