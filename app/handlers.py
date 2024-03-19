@@ -15,7 +15,7 @@ from app.database.requests import (
     check_cart, check_items_in_category,
     clear_cart
 )
-from functions import *
+from app.functions import *
 
 from config import ADMINS, PROMO_CODES
 
