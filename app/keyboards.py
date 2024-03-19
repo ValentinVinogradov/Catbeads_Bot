@@ -1,14 +1,17 @@
-from aiogram.types import (ReplyKeyboardMarkup, KeyboardButton, 
-                        InlineKeyboardMarkup, InlineKeyboardButton)
+from aiogram.types import (
+    InlineKeyboardMarkup, 
+    InlineKeyboardButton
+)
 
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-from aiogram.fsm.context import FSMContext
-from aiogram.types import Message
 
-from app.database.requests import get_categories, get_items_by_category, check_items_in_category
+from app.database.requests import (
+    get_categories, 
+    get_items_by_category, 
+    check_items_in_category
+)
 
 
-# Кнопки(список кнопок в 1 ряд), input... - подсказка
 main = InlineKeyboardMarkup(inline_keyboard=[
                                             [InlineKeyboardButton(text='Каталог', 
                                                                 callback_data='catalog'),
@@ -37,12 +40,26 @@ edit = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Наз�
                                 input_field_placeholder='Выберите пункт меню')
 
 
-confirmation = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Да, отправить',
-                                                                        callback_data='confirmation')],
-                                                    [InlineKeyboardButton(text='Нет, вернуться назад',
-                                                                        callback_data='cancel_newsletter')]],
-                                    resize_keyboard=True,
-                                    input_field_placeholder='Выберите пункт меню')
+async def confirmation(state: str):
+    keyboard = InlineKeyboardBuilder()
+    if state == 'newsletter':
+        keyboard.add(InlineKeyboardButton(text='Да, отправить', callback_data='confirmation'))
+    else:
+        keyboard.add(InlineKeyboardButton(text='Да, удалить', callback_data='confirmation'))
+    keyboard.add(InlineKeyboardButton(text='Нет, вернуться назад', callback_data='cancel'))
+    return keyboard.adjust(1).as_markup()
+
+
+async def promo_code(is_writing):
+    keyboard = InlineKeyboardBuilder()
+    if is_writing:
+        keyboard.add(InlineKeyboardButton(text='Дальше', callback_data='promo_skip'))
+    else:
+        keyboard.add(InlineKeyboardButton(text='Да, ввести промокод',
+                                            callback_data='promo_write'))
+        keyboard.add(InlineKeyboardButton(text='Нет',
+                                            callback_data='promo_skip'))
+    return keyboard.adjust(1).as_markup()
 
 
 async def ordering(is_customizing):

@@ -1,6 +1,6 @@
-from aiogram import Router, F, Bot
+from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
-from aiogram.filters import CommandStart, Command, Filter
+from aiogram.filters import Command, Filter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
@@ -10,7 +10,8 @@ from app.database.requests import (
     delete_item_from_bot, 
     check_items_in_category, 
     edit_item, 
-    delete_item_from_all_carts
+    delete_item_from_all_carts,
+    get_item_by_id
 )
 from config import ADMINS
 
@@ -36,6 +37,7 @@ class DeleteItem(StatesGroup):
     
     category = State()
     item_id = State()
+    confirm = State()
 
 
 class EditItem(StatesGroup):
@@ -50,8 +52,6 @@ class EditItem(StatesGroup):
 
 class AdminProtect(Filter):
     async def __call__(self, message: Message):
-        
-        # Наши айди
         return message.from_user.id in ADMINS
 
 
@@ -64,7 +64,7 @@ async def apanel(message: Message):
         \n\n/edit_item - Изменить товар\n\n/delete_item - Удалить товар')
 
 
-@admin.callback_query(AdminProtect(), Newsletter.confirm, F.data == 'cancel_newsletter')
+@admin.callback_query(AdminProtect(), Newsletter.confirm, F.data == 'cancel')
 @admin.message(AdminProtect(), Command('newsletter'))
 async def newsletter(message: Message | CallbackQuery, state: FSMContext):
     await state.set_state(Newsletter.message)
@@ -163,24 +163,44 @@ async def delete_item(message: Message | CallbackQuery, state: FSMContext):
 @admin.callback_query(AdminProtect(), DeleteItem.category, F.data.startswith('category_'))
 async def delete_item_from_category(callback: CallbackQuery, state: FSMContext):
     await state.set_state(DeleteItem.item_id)
+    category_id = callback.data.split('_')[1]
+    await state.update_data(category_id=category_id)
     await callback.answer('')
-    if await check_items_in_category(callback.data.split('_')[1]):
+    if await check_items_in_category(category_id):
         await callback.message.edit_text('Выберите товар, который хотите удалить',
-            reply_markup=await kb.items(callback.data.split('_')[1]))
+            reply_markup=await kb.items(category_id))
     else:
-        await callback.message.edit_text('Нет товаров для удаления', reply_markup=await kb.items(callback.data.split('_')[1]))
+        await callback.message.edit_text('Нет товаров для удаления', reply_markup=await kb.items(category_id))
 
 
-@admin.callback_query(AdminProtect(), DeleteItem.item_id, F.data.startswith('item_'))
-async def deletion_item(callback: CallbackQuery, state: FSMContext):
-    await delete_item_from_bot(callback.data.split('_')[1])
-    await delete_item_from_all_carts(callback.data.split('_')[1])
+@admin.callback_query(AdminProtect(), DeleteItem.item_id)
+async def alert_delete(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(DeleteItem.confirm)
     await callback.answer('')
-    await callback.message.edit_text('Вы успешно удалили товар', reply_markup=kb.to_main)
-    await state.clear()
+    item = await get_item_by_id(callback.data.split('_')[1])
+    await state.update_data(item_id=item.id)
+    await callback.message.edit_text(f'Вы точно хотите удалить товар {item.name}?', reply_markup=await kb.confirmation('delete'))
 
 
-# Измение данных о товаре
+@admin.callback_query(AdminProtect(), DeleteItem.confirm)
+async def deletion_item(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    if callback.data == 'confirmation':
+        item_id = data['item_id']
+        await delete_item_from_bot(item_id)
+        await delete_item_from_all_carts(item_id)
+        await callback.answer('')
+        await callback.message.edit_text('Вы успешно удалили товар!', reply_markup=kb.to_main)
+        await state.clear()
+    else:
+        await state.set_state(DeleteItem.item_id)
+        category_id = data['category_id']
+        await callback.message.edit_text('Выберите товар, который хотите удалить',
+            reply_markup=await kb.items(category_id))
+    
+
+
+# Изменение данных о товаре
 @admin.callback_query(AdminProtect(), EditItem.item_id, F.data == 'to_categories')
 @admin.message(AdminProtect(), Command('edit_item'))
 async def edit_choose_item(message: Message | CallbackQuery, state: FSMContext):

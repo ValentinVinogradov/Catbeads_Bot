@@ -17,7 +17,7 @@ class User(Base):
     tg_id = mapped_column(BigInteger)
     
     cart_rel: Mapped[List['Cart']] = relationship(back_populates='user_rel')
-    
+
 
 class Category(Base):
     __tablename__ = 'categories'
@@ -26,7 +26,7 @@ class Category(Base):
     name: Mapped[str] = mapped_column(String(50))
     
     item_rel: Mapped[List['Item']] = relationship(back_populates='category_rel')
-    
+
 
 class Item(Base):
     __tablename__ = 'items'
@@ -40,7 +40,7 @@ class Item(Base):
 
     category_rel: Mapped['Category'] = relationship(back_populates='item_rel')
     cart_rel: Mapped[List['Cart']] = relationship(back_populates='item_rel')
-    
+
 class Cart(Base):
     __tablename__ = 'cart'
     
@@ -50,6 +50,14 @@ class Cart(Base):
     
     user_rel: Mapped['User'] = relationship(back_populates='cart_rel')
     item_rel: Mapped['Item'] = relationship(back_populates='cart_rel')
+
+
+class Promo_codes(Base):
+    __tablename__ = 'promo_codes'
+    
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(50))
+    amount: Mapped[int] = mapped_column()
 
 
 async def async_main():
