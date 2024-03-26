@@ -1,6 +1,16 @@
 from re import search
 
 
+async def format_act_count(count: int) -> str:
+    if count % 10 == 1 and count % 100 != 11:
+        return f"{count} активацию"
+    elif count % 10 in [2, 3, 4] and count % 100 not in [12, 13, 14]:
+        return f"{count} активации"
+    else:
+        return f"{count} активаций"
+        
+
+
 async def format_product_count(count: int) -> str:
     if count % 10 == 1 and count % 100 != 11:
         return f"{count} товар"

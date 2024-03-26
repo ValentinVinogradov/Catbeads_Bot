@@ -8,6 +8,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from app.database.requests import (
     get_categories, 
     get_items_by_category, 
+    get_promo,
     check_items_in_category
 )
 
@@ -17,16 +18,13 @@ main = InlineKeyboardMarkup(inline_keyboard=[
     InlineKeyboardButton(text='На заказ', callback_data='yours')],
 
     [InlineKeyboardButton(text='Корзина', callback_data='my_cart'),
-    InlineKeyboardButton(text='Контакты', callback_data='contacts')]
+    InlineKeyboardButton(text='Написать нам', callback_data='contacts')],
+    
+    [InlineKeyboardButton(text='Доставка', callback_data='delivery'),
+    InlineKeyboardButton(text='Отзывы', url='https://vk.com/topic-217319908_49283641')]
 ],
     resize_keyboard=True,
     input_field_placeholder='Выберите пункт меню')
-
-
-# to_main = InlineKeyboardMarkup(inline_keyboard=[
-#     [InlineKeyboardButton(text='На главную', callback_data='to_main')]],
-#     resize_keyboard=True,
-#     input_field_placeholder='Выберите пункт меню')
 
 
 edit = InlineKeyboardMarkup(inline_keyboard=[
@@ -43,17 +41,23 @@ edit = InlineKeyboardMarkup(inline_keyboard=[
 
 
 apanel = InlineKeyboardMarkup(inline_keyboard=[
-    [InlineKeyboardButton(text='Создать рассылку', callback_data='newsletter')],
-    [InlineKeyboardButton(text='Добавить товар', callback_data='add_item')],
-    [InlineKeyboardButton(text='Изменить товар', callback_data='edit_item')],
-    [InlineKeyboardButton(text='Удалить товар', callback_data='delete_item')],
-    [InlineKeyboardButton(text='В главное меню', callback_data='to_main')]
+    [InlineKeyboardButton(text='Добавить товар', callback_data='add_item'),
+    InlineKeyboardButton(text='Изменить товар', callback_data='edit_item')],
+    
+    [InlineKeyboardButton(text='Удалить товар', callback_data='delete_item'),
+    InlineKeyboardButton(text='Создать рассылку', callback_data='newsletter')],
+    
+    [InlineKeyboardButton(text='Добавить промокод', callback_data='add_promo'),
+    InlineKeyboardButton(text='Удалить промокод', callback_data='delete_promo')],
+    
+    [InlineKeyboardButton(text='Список промокодов', callback_data='promos'),
+    InlineKeyboardButton(text='В главное меню', callback_data='to_main')]
 ],
     resize_keyboard=True,
     input_field_placeholder='Выберите пункт меню')
 
 
-async def to_apanel_or_main(place_to: str):
+async def to_apanel_or_main(place_to: str = 'to_main'):
     keyboard = InlineKeyboardBuilder()
     if place_to == 'to_main':
         keyboard.add(InlineKeyboardButton(text='На главную', callback_data='to_main'))
@@ -72,7 +76,7 @@ async def confirmation(state: str):
     return keyboard.adjust(1).as_markup()
 
 
-async def promo_code(is_writing):
+async def promo_code(is_writing: bool = True):
     keyboard = InlineKeyboardBuilder()
     if is_writing:
         keyboard.add(InlineKeyboardButton(text='Дальше', callback_data='promo_skip'))
@@ -84,7 +88,7 @@ async def promo_code(is_writing):
     return keyboard.adjust(1).as_markup()
 
 
-async def ordering(is_customizing):
+async def ordering(is_customizing: bool = True):
     keyboard = InlineKeyboardBuilder()
     if is_customizing:
         keyboard.add(InlineKeyboardButton(text='Оформить заказ', callback_data='custom_ordering'))
@@ -129,5 +133,12 @@ async def items(category_id: int):
             keyboard.add(InlineKeyboardButton(text=item.name,
                                             callback_data=f"item_{item.id}"))
     keyboard.add(InlineKeyboardButton(text='Назад', callback_data='to_categories'))
-    return keyboard.adjust(2).as_markup()
+    return keyboard.adjust(1).as_markup()
 
+
+async def show_promo_codes():
+    keyboard = InlineKeyboardBuilder()
+    promo_codes = await get_promo()
+    for promo_code in promo_codes:
+        keyboard.add(InlineKeyboardButton(text=promo_code.name, callback_data=f'{promo_code.name}'))
+    return keyboard.adjust(2).as_markup()

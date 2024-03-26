@@ -12,7 +12,8 @@ from app.database.requests import (
     set_cart, get_cart, get_item_by_id, 
     delete_item_from_cart, get_category_by_id, 
     check_cart, check_items_in_category,
-    clear_cart
+    clear_cart, decrease_amount_promo,
+    get_promo
 )
 from app.functions import *
 
@@ -49,11 +50,25 @@ async def cmd_start(message: Message | CallbackQuery, state:FSMContext):
         await state.clear()
 
 
+@router.callback_query(F.data == 'delivery')
+async def contacts(callback: CallbackQuery):
+    await callback.answer('')
+    delivery_text = '\
+    *информация* *о* *доставке*\n\n\
+осуществляем доставку почтой России по всей стране\\.\n*бесплатная* *доставка* при заказе от *1300* *руб*\\.\n\n\
+в среднем заказик едет около недели до пункта назначения\\.\n\n\
+если вы из Комсомольска\\-на\\-Амуре \\- личная встреча с предоплатой\\.'
+    await callback.message.edit_text(
+        delivery_text, 
+        reply_markup=await kb.to_apanel_or_main(),
+        parse_mode='MarkdownV2')
+
+
 @router.callback_query(F.data == 'contacts')
 async def contacts(callback: CallbackQuery):
     await callback.answer('')
     await callback.message.edit_text('@i17bs43kzkp0 - владелец магазинчика', 
-                                    reply_markup=await kb.to_apanel_or_main('to_main'))
+                                    reply_markup=await kb.to_apanel_or_main())
 
 
 @router.callback_query(Navigation.specific_category, F.data == 'to_categories')
@@ -81,7 +96,7 @@ async def yours_order(callback: CallbackQuery, state: FSMContext):
     await state.update_data(yours_category=chosen_category.name)
     
     await callback.message.edit_text(f'Вы выбрали *{chosen_category.name}* на заказ\n\nЕсли хотите оформить заказ, нажмите на кнопку внизу', 
-                                reply_markup=await kb.ordering(True), parse_mode='MarkdownV2')
+                                reply_markup=await kb.ordering(), parse_mode='MarkdownV2')
 
 
 @router.callback_query(Navigation.specific_item, F.data == 'to_spec_category')
@@ -113,10 +128,19 @@ async def category(callback: CallbackQuery, state: FSMContext):
                                         reply_markup=items_kb)
     else:
         msg_text = f'Мы изготовляем *{chosen_category.name}* только на заказ\\. Если хотите заказать их, это можно сделать на главной странице, нажав кнопку "*На* *заказ*" и выбрав "{chosen_category.name}"'
+        
         if flag:
-            await callback.message.answer(msg_text, reply_markup=items_kb, parse_mode='MarkdownV2')
+            await callback.message.answer(
+                msg_text, 
+                reply_markup=items_kb, 
+                parse_mode='MarkdownV2'
+            )
         else:
-            await callback.message.edit_text(msg_text, reply_markup=items_kb, parse_mode='MarkdownV2')
+            await callback.message.edit_text(
+                msg_text, 
+                reply_markup=items_kb, 
+                parse_mode='MarkdownV2'
+            )
 
 
 @router.callback_query(Navigation.specific_category, F.data.startswith('item_'))
@@ -182,7 +206,7 @@ async def promo(callback: CallbackQuery, state: FSMContext):
         await state.set_state(Order.promo)
         
         promo_msg = await callback.message.edit_text('Введите промокод', 
-                                                    reply_markup=await kb.promo_code(True))
+                                                    reply_markup=await kb.promo_code())
         await state.update_data(promo_msg=promo_msg.message_id)        
     else:
         await state.set_state(Order.my_cart)
@@ -196,8 +220,9 @@ async def access_promo(message: Message, state: FSMContext):
     state_data = await state.get_data()
     promo_msg_id = state_data['promo_msg']
     msg_id = message.message_id
-    
-    if promo_code in PROMO_CODES:
+    promo_codes = [promo_code.name for promo_code in await get_promo()]
+
+    if promo_code in promo_codes:
         success_msg = await message.answer('Промокод успешно применен!')
         
         await state.set_state(Order.my_cart)
@@ -258,9 +283,11 @@ async def delete_from_cart(callback: CallbackQuery, state: FSMContext):
         await callback.message.bot.edit_message_text(message_text, callback.from_user.id, cart_info_id)
 
     elif count_of_items == 1 and cart_info_id:
+        
         await callback.message.bot.delete_message(callback.from_user.id, cart_info_id + 1)
         await callback.message.bot.delete_message(callback.from_user.id, cart_info_id)
         await callback.message.answer('Вы вернулись в главное меню!', reply_markup=kb.main)
+        
         await state.clear()
 
 
@@ -288,11 +315,13 @@ async def order_items(callback: CallbackQuery, state: FSMContext):
         
         if 'promo_code' in data:
             price = await access_discount(price, data['promo_code'])
+            await decrease_amount_promo(data['promo_code'])
         
         
         final_text += order_text + f'\nИтоговая сумма: *{price}* *руб*\\.\n\nДля оплаты напишите: *@i17bs43kzkp0*\n\nБлагодарим за ваш заказ\\! Будем рады видеть вас снова\\!'
         await callback.message.answer(final_text, parse_mode='MarkdownV2')
         await callback.message.answer('Вы вернулись в главное меню!', reply_markup=kb.main)
+        
         notification_text += f'\n\n{order_text}\nНа сумму: *{price}* *руб*\\.\n\nДоставка: '
         
         if price < 1300:

@@ -5,13 +5,14 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 import app.keyboards as kb
+from app.functions import format_act_count
 from app.database.requests import (
     get_users, set_item, 
     delete_item_from_bot, 
     check_items_in_category, 
-    edit_item, 
+    edit_item, delete_promo,
     delete_item_from_all_carts,
-    get_item_by_id
+    get_item_by_id, set_promo
 )
 from config import ADMINS
 
@@ -24,6 +25,12 @@ class Newsletter(StatesGroup):
     message = State()
     confirm = State()
 
+
+class Promo(StatesGroup):
+    
+    promo_add = State()
+    promo_add_val = State()
+    promo_del = State()
 
 class AddItem(StatesGroup):
     
@@ -66,6 +73,53 @@ async def apanel(message: Message | CallbackQuery):
         await message.answer('Возможные действия:', reply_markup=kb.apanel)
     else:
         await message.message.edit_text('Вы вернулись в панельку', reply_markup=kb.apanel)
+
+
+@admin.callback_query(AdminProtect(), F.data == 'add_promo')
+async def add_promo(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(Promo.promo_add)
+    
+    await callback.message.edit_text('Напишите промокод', reply_markup=await kb.to_apanel_or_main('to_apanel'))
+
+
+@admin.message(AdminProtect(), Promo.promo_add, F.text)
+async def add_promo(message: Message, state: FSMContext):
+    await state.set_state(Promo.promo_add_val)
+    await state.update_data(name=message.text)
+    
+    await message.answer('Напишите количество активаций промокода')
+
+
+@admin.message(AdminProtect(), Promo.promo_add_val, F.text)
+async def adding_promo(message: Message, state: FSMContext):
+    await state.update_data(amount=message.text)
+    
+    data = await state.get_data()
+    await set_promo(data)
+    
+    act = await format_act_count(int(data['amount']))
+    
+    await message.answer(f'Промокод *{data['name']}* на *{act}* был успешно добавлен\\!', parse_mode='MarkdownV2')
+    await message.answer('Вы вернулись в главное меню!', reply_markup=kb.main)
+    
+    await state.clear()
+
+
+@admin.callback_query(AdminProtect(), F.data == 'delete_promo')
+async def del_promo(callback: CallbackQuery, state: FSMContext):
+    await state.set_state(Promo.promo_del)
+    
+    await callback.message.edit_text('Выберите промокод, который хотите удалить', reply_markup=await kb.show_promo_codes())
+
+
+@admin.callback_query(AdminProtect(), Promo.promo_del, F.data.startswith('promo_'))
+async def deleting_promo(callback: CallbackQuery, state: FSMContext):
+    await delete_promo(callback.data.split('_')[1])
+    
+    await callback.message.edit_text('Промокод успешно был удалён')
+    await callback.message.answer('Вы вернулись в главное меню!', reply_markup=kb.main)
+    
+    await state.clear()
 
 
 @admin.callback_query(AdminProtect(), Newsletter.confirm, F.data == 'cancel')
@@ -214,11 +268,14 @@ async def deletion_item(callback: CallbackQuery, state: FSMContext):
         item_id = data['item_id']
         await delete_item_from_bot(item_id)
         await delete_item_from_all_carts(item_id)
+        
         await callback.answer('Вы успешно удалили товар!')
-        await callback.message('Вы вернулись в главное меню!', reply_markup=kb.main)
+        await callback.message.answer('Вы вернулись в главное меню!', reply_markup=kb.main)
+        
         await state.clear()
     else:
         await state.set_state(DeleteItem.item_id)
+        
         category_id = data['category_id']
         await callback.message.edit_text('Выберите товар, который хотите удалить',
             reply_markup=await kb.items(category_id))

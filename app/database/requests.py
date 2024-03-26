@@ -1,4 +1,4 @@
-from app.database.models import User, Category, Item, Cart
+from app.database.models import User, Category, Item, Cart, Promo_codes
 from app.database.models import async_session
 
 from sqlalchemy import select, update, delete
@@ -30,6 +30,12 @@ async def set_cart(tg_id, item_id):
         session.add(Cart(user=user.id, item=item_id))
         await session.commit()
         return True
+
+
+async def set_promo(data):
+    async with async_session() as session:
+        session.add(Promo_codes(**data))
+        await session.commit()
 
 
 async def get_cart(tg_id):
@@ -69,6 +75,12 @@ async def get_item_by_id(item_id: int):
         return item
 
 
+async def get_promo():
+    async with async_session() as session:
+        promo_codes = await session.scalars(select(Promo_codes))
+        return promo_codes
+
+
 async def delete_item_from_cart(tg_id, item_id):
     async with async_session() as session:
         user = await session.scalar(select(User).where(User.tg_id == tg_id))
@@ -85,6 +97,12 @@ async def delete_item_from_bot(item_id):
 async def delete_item_from_all_carts(item_id):
     async with async_session() as session:
         await session.execute(delete(Cart).where(Cart.item == item_id))
+        await session.commit()
+
+
+async def delete_promo(promo_name):
+    async with async_session() as session:
+        await session.execute(delete(Promo_codes).where(Promo_codes.name == promo_name))
         await session.commit()
 
 
@@ -112,3 +130,13 @@ async def check_items_in_category(category_id):
     async with async_session() as session:
         result = await session.execute(select(Item).where(Item.category == category_id))
         return False if not result.scalars().all() else True
+
+
+async def decrease_amount_promo(promo_name):
+    async with async_session() as session:
+        amount = await session.scalar(select(Promo_codes.amount).where(Promo_codes.name == promo_name))
+        if amount > 1:
+            await session.execute(update(Promo_codes).where(Promo_codes.name == promo_name).values(amount=amount-1))
+        else:
+            await session.execute(delete(Promo_codes).where(Promo_codes.name == promo_name))
+        await session.commit()
