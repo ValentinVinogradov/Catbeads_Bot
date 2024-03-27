@@ -17,7 +17,7 @@ from app.database.requests import (
 )
 from app.functions import *
 
-from config import ADMINS, PROMO_CODES
+from config import ADMINS
 
 
 router = Router()

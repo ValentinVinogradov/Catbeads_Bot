@@ -140,5 +140,6 @@ async def show_promo_codes():
     keyboard = InlineKeyboardBuilder()
     promo_codes = await get_promo()
     for promo_code in promo_codes:
-        keyboard.add(InlineKeyboardButton(text=promo_code.name, callback_data=f'{promo_code.name}'))
+        keyboard.add(InlineKeyboardButton(text=promo_code.name, callback_data=f'promo_{promo_code.name}'))
+    keyboard.add(InlineKeyboardButton(text='Назад', callback_data='to_apanel'))
     return keyboard.adjust(2).as_markup()

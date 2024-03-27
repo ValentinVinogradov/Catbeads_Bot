@@ -108,8 +108,11 @@ async def adding_promo(message: Message, state: FSMContext):
 @admin.callback_query(AdminProtect(), F.data == 'delete_promo')
 async def del_promo(callback: CallbackQuery, state: FSMContext):
     await state.set_state(Promo.promo_del)
-    
-    await callback.message.edit_text('Выберите промокод, который хотите удалить', reply_markup=await kb.show_promo_codes())
+    k = await kb.show_promo_codes()
+    if len(k.inline_keyboard[0]) == 1:
+        await callback.message.edit_text('Нет промокодов для удаления', reply_markup=await kb.show_promo_codes())
+    else:
+        await callback.message.edit_text('Выберите промокод, который хотите удалить', reply_markup=await kb.show_promo_codes())
 
 
 @admin.callback_query(AdminProtect(), Promo.promo_del, F.data.startswith('promo_'))
@@ -120,6 +123,16 @@ async def deleting_promo(callback: CallbackQuery, state: FSMContext):
     await callback.message.answer('Вы вернулись в главное меню!', reply_markup=kb.main)
     
     await state.clear()
+
+
+@admin.callback_query(AdminProtect(), F.data == 'promos')
+async def show_promos(callback: CallbackQuery):
+    k = await kb.show_promo_codes()
+    if len(k.inline_keyboard[0]) == 1:
+        await callback.message.edit_text('Нет доступных промокодов', reply_markup=await kb.show_promo_codes())
+    else:
+        await callback.message.edit_text('Список всех доступных промокодов', reply_markup=await kb.show_promo_codes())
+
 
 
 @admin.callback_query(AdminProtect(), Newsletter.confirm, F.data == 'cancel')
