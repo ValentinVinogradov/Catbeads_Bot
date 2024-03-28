@@ -40,12 +40,12 @@ class Navigation(StatesGroup):
 async def cmd_start(message: Message | CallbackQuery, state:FSMContext):
     if isinstance(message, Message):
         await set_user(message.from_user.id)
-        await message.answer("Привет, котик!",
+        await message.answer("привет, котик!! 🫧",
                             reply_markup=kb.main)
         await state.clear()
     else:
         await message.answer('')
-        await message.message.edit_text("Вы вернулись в главное меню!", 
+        await message.message.edit_text("главное меню 🎀", 
                                         reply_markup=kb.main)
         await state.clear()
 
@@ -67,7 +67,7 @@ async def contacts(callback: CallbackQuery):
 @router.callback_query(F.data == 'contacts')
 async def contacts(callback: CallbackQuery):
     await callback.answer('')
-    await callback.message.edit_text('@i17bs43kzkp0 - владелец магазинчика', 
+    await callback.message.edit_text('по всем вопросам - @i17bs43kzkp0', 
                                     reply_markup=await kb.to_apanel_or_main())
 
 
@@ -82,7 +82,7 @@ async def catalog(callback: CallbackQuery, state: FSMContext):
     else:
         await state.set_state(Navigation.yours_category)
     
-    await callback.message.edit_text('Выберите категорию', 
+    await callback.message.edit_text('какие украшения ты хочешь посмотреть? 🐾', 
                                     reply_markup=await kb.categories())
 
 
@@ -95,7 +95,7 @@ async def yours_order(callback: CallbackQuery, state: FSMContext):
     chosen_category = await get_category_by_id(callback.data.split('_')[1])
     await state.update_data(yours_category=chosen_category.name)
     
-    await callback.message.edit_text(f'Вы выбрали *{chosen_category.name}* на заказ\n\nЕсли хотите оформить заказ, нажмите на кнопку внизу', 
+    await callback.message.edit_text(f'вы выбрали *{chosen_category.name}* на заказ\n\nЕсли хотите оформить заказ, нажмите на кнопку внизу', 
                                 reply_markup=await kb.ordering(), parse_mode='MarkdownV2')
 
 
@@ -119,7 +119,7 @@ async def category(callback: CallbackQuery, state: FSMContext):
     items_kb = await kb.items(category_id)
     
     if await check_items_in_category(category_id):
-        msg_text = 'Выберите товар'
+        msg_text = 'смотри, что у нас есть!! 🛍'
         if flag:
             await callback.message.answer(msg_text,
                                         reply_markup=items_kb)
@@ -127,7 +127,7 @@ async def category(callback: CallbackQuery, state: FSMContext):
             await callback.message.edit_text(msg_text,
                                         reply_markup=items_kb)
     else:
-        msg_text = f'Мы изготовляем *{chosen_category.name}* только на заказ\\. Если хотите заказать их, это можно сделать на главной странице, нажав кнопку "*На* *заказ*" и выбрав "{chosen_category.name}"'
+        msg_text = f'мы изготовляем *{chosen_category.name}* только на заказ\\. если хотите заказать их, это можно сделать на главной странице, нажав кнопку "*на* *заказ*" и выбрав "{chosen_category.name}"'
         
         if flag:
             await callback.message.answer(
@@ -152,16 +152,16 @@ async def show_item(callback: CallbackQuery, state: FSMContext):
     
     item = await get_item_by_id(callback.data.split('_')[1])
     await callback.message.answer_photo(photo=item.photo, \
-        caption=f'{item.name}\n\n{item.description}\n\nЦена: {item.price} руб.',
+        caption=f'{item.name}\n\n{item.description}\n\nцена: {item.price} руб.',
         reply_markup=await kb.cart(item.id))
 
 
 @router.callback_query(F.data.startswith('cart_'))
 async def add_to_cart(callback: CallbackQuery):
     if await set_cart(callback.from_user.id, callback.data.split('_')[1]):
-        await callback.answer('Товар добавлен в корзину', show_alert=True)
+        await callback.answer('товар добавлен в корзину', show_alert=True)
     else:
-        await callback.answer("Товар уже был добавлен", show_alert=True)
+        await callback.answer("товар уже был добавлен", show_alert=True)
 
 
 @router.callback_query(F.data == 'my_cart')
@@ -174,7 +174,7 @@ async def my_cart(callback: CallbackQuery, state:FSMContext):
     cart_full = await check_cart(callback.from_user.id)
     
     if not cart_full:
-        await callback.answer("Корзина пуста", show_alert=True)
+        await callback.answer("ваша корзина пуста", show_alert=True)
     else:
         await callback.answer('')
         await callback.message.delete()
@@ -187,13 +187,13 @@ async def my_cart(callback: CallbackQuery, state:FSMContext):
             item = await get_item_by_id(item_info.item)
             count_of_items += 1
             price_of_items += int(item.price)
-            await callback.message.answer_photo(photo=item.photo, caption=f'{item.name}\n\n{item.description}\n\nЦена: {item.price} руб.',
+            await callback.message.answer_photo(photo=item.photo, caption=f'{item.name}\n\nцена: {item.price} руб.',
                                     reply_markup=await kb.del_from_cart(item.id))
         
-        message_text = f'Всего {await format_product_count(count_of_items)} на сумму {price_of_items} руб.'
+        message_text = f'всего {await format_product_count(count_of_items)} на сумму {price_of_items} руб.'
         new_message = await callback.message.answer(message_text)
         
-        await callback.message.answer('Есть ли у вас промокод?', reply_markup=await kb.promo_code(False))
+        await callback.message.answer('есть ли у вас промокод?', reply_markup=await kb.promo_code(False))
         await state.update_data(count_of_items=count_of_items, price_of_items=price_of_items, cart_info_id=new_message.message_id)
 
 
@@ -205,12 +205,12 @@ async def promo(callback: CallbackQuery, state: FSMContext):
     if callback.data == 'promo_write':
         await state.set_state(Order.promo)
         
-        promo_msg = await callback.message.edit_text('Введите промокод', 
+        promo_msg = await callback.message.edit_text('введите промокод', 
                                                     reply_markup=await kb.promo_code())
         await state.update_data(promo_msg=promo_msg.message_id)        
     else:
         await state.set_state(Order.my_cart)
-        await callback.message.edit_text('Если хотите оформить заказ, нажмите на кнопку внизу', reply_markup=await kb.ordering(False))
+        await callback.message.edit_text('для оформления заказа, нажмите на кнопку внизу', reply_markup=await kb.ordering(False))
 
 
 @router.message(Order.promo, F.text)
@@ -223,7 +223,7 @@ async def access_promo(message: Message, state: FSMContext):
     promo_codes = [promo_code.name for promo_code in await get_promo()]
 
     if promo_code in promo_codes:
-        success_msg = await message.answer('Промокод успешно применен!')
+        success_msg = await message.answer('промокод успешно применен!')
         
         await state.set_state(Order.my_cart)
         
@@ -242,9 +242,9 @@ async def access_promo(message: Message, state: FSMContext):
         await message.bot.edit_message_text(message_text, message.chat.id, cart_info_id)
         await state.update_data(promo_code=promo_code)
         
-        await message.answer('Если хотите оформить заказ, нажмите на кнопку внизу', reply_markup=await kb.ordering(False))
+        await message.answer('для оформления заказа, нажмите на кнопку внизу', reply_markup=await kb.ordering(False))
     else:
-        alert_msg = await message.answer('Такого промокода не существует')
+        alert_msg = await message.answer('такого промокода не существует')
         await state.set_state(Order.my_cart)
         
         await message.bot.delete_message(message.chat.id, msg_id)
@@ -260,7 +260,7 @@ async def access_promo(message: Message, state: FSMContext):
 async def delete_from_cart(callback: CallbackQuery, state: FSMContext):
     await delete_item_from_cart(callback.from_user.id, callback.data.split('_')[1])
     
-    await callback.answer('Вы удалили товар из корзины', show_alert=True)
+    await callback.answer('вы удалили товар из корзины', show_alert=True)
     
     await callback.message.delete()
 
@@ -279,14 +279,14 @@ async def delete_from_cart(callback: CallbackQuery, state: FSMContext):
         if 'promo_code' in state_data:
             price_of_items = await access_discount(price_of_items, state_data['promo_code'])
         
-        message_text = f'Всего {await format_product_count(count_of_items)} на сумму {price_of_items} руб.'
+        message_text = f'всего {await format_product_count(count_of_items)} на сумму {price_of_items} руб.'
         await callback.message.bot.edit_message_text(message_text, callback.from_user.id, cart_info_id)
 
     elif count_of_items == 1 and cart_info_id:
         
         await callback.message.bot.delete_message(callback.from_user.id, cart_info_id + 1)
         await callback.message.bot.delete_message(callback.from_user.id, cart_info_id)
-        await callback.message.answer('Вы вернулись в главное меню!', reply_markup=kb.main)
+        await callback.message.answer('главное меню 🎀', reply_markup=kb.main)
         
         await state.clear()
 
@@ -297,7 +297,7 @@ async def order_items(callback: CallbackQuery, state: FSMContext):
     await callback.answer('')
     
     data = await state.get_data()
-    final_text = 'Ваш заказик:\n\n'
+    final_text = 'ваш заказик:\n\n'
     order_text = ''
     notification_text = f'@{callback.from_user.username} сделал заказ:'
     
@@ -318,30 +318,30 @@ async def order_items(callback: CallbackQuery, state: FSMContext):
             await decrease_amount_promo(data['promo_code'])
         
         
-        final_text += order_text + f'\nИтоговая сумма: *{price}* *руб*\\.\n\nДля оплаты напишите: *@i17bs43kzkp0*\n\nБлагодарим за ваш заказ\\! Будем рады видеть вас снова\\!'
+        final_text += order_text + f'\nитоговая сумма: *{price}* *руб*\\.\n\nдля оплаты напишите: *@i17bs43kzkp0*\n\nблагодарим за ваш заказ\\! будем рады видеть вас снова\\!'
         await callback.message.answer(final_text, parse_mode='MarkdownV2')
-        await callback.message.answer('Вы вернулись в главное меню!', reply_markup=kb.main)
+        await callback.message.answer('главное меню 🎀', reply_markup=kb.main)
         
-        notification_text += f'\n\n{order_text}\nНа сумму: *{price}* *руб*\\.\n\nДоставка: '
+        notification_text += f'\n\n{order_text}\nна сумму: *{price}* *руб*\\.\n\nдоставка: '
         
         if price < 1300:
-            notification_text += '*платная*\n\nКолечко в подарок: *нет*'
+            notification_text += '*платная*\n\nколечко в подарок: *нет*'
         elif 1300 <= price < 1500:
-            notification_text += '*бесплатная*\n\nКолечко в подарок: *нет*'
+            notification_text += '*бесплатная*\n\nколечко в подарок: *нет*'
         elif price >= 1500:
-            notification_text += '*бесплатная*\n\nКолечко в подарок: *да*'
+            notification_text += '*бесплатная*\n\nколечко в подарок: *да*'
         
         if 'promo_code' in data:
-            notification_text += f'\n\nБыл использован промокод: *{data['promo_code']}* на скидку *{await format_promo(data['promo_code'])}**%*'
+            notification_text += f'\n\nбыл использован промокод: *{data['promo_code']}* на скидку *{await format_promo(data['promo_code'])}**%*'
         else:
-            notification_text += '\n\nПромокод *не* *был* *использован*'
+            notification_text += '\n\nпромокод *не* *был* *использован*'
 
     else:
         data = await state.get_data()
         order_text = f'*{data['yours_category']}* на заказ'
-        final_text += f'{order_text}\n\nСтоимость украшения и детали обсудите с *@i17bs43kzkp0*\n\nБлагодарим за ваш заказ\\! Будем рады видеть вас снова\\!'
+        final_text += f'{order_text}\n\nстоимость украшения и детали обсудите с *@i17bs43kzkp0*\n\nблагодарим за ваш заказ\\! будем рады видеть вас снова\\!'
         await callback.message.answer(final_text, parse_mode='MarkdownV2')
-        await callback.message.answer('Вы вернулись в главное меню!', reply_markup=kb.main)
+        await callback.message.answer('главное меню 🎀', reply_markup=kb.main)
         notification_text += f'\n\n{order_text}'
         
     await clear_cart(callback.from_user.id)
