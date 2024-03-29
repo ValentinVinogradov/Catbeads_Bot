@@ -95,7 +95,7 @@ async def yours_order(callback: CallbackQuery, state: FSMContext):
     chosen_category = await get_category_by_id(callback.data.split('_')[1])
     await state.update_data(yours_category=chosen_category.name)
     
-    await callback.message.edit_text(f'вы выбрали *{chosen_category.name}* на заказ\n\nЕсли хотите оформить заказ, нажмите на кнопку внизу', 
+    await callback.message.edit_text(f'вы выбрали *{chosen_category.name}* на заказ\n\nдля оформления заказа, нажмите на кнопку внизу', 
                                 reply_markup=await kb.ordering(), parse_mode='MarkdownV2')
 
 
@@ -127,7 +127,7 @@ async def category(callback: CallbackQuery, state: FSMContext):
             await callback.message.edit_text(msg_text,
                                         reply_markup=items_kb)
     else:
-        msg_text = f'мы изготовляем *{chosen_category.name}* только на заказ\\. если хотите заказать их, это можно сделать на главной странице, нажав кнопку "*на* *заказ*" и выбрав "{chosen_category.name}"'
+        msg_text = f'мы изготовляем *{chosen_category.name}* только на заказ\\ \n\nдля заказа нажмите в главном меню "*на* *заказ*" и выберите "{chosen_category.name}"'
         
         if flag:
             await callback.message.answer(
