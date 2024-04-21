@@ -3,6 +3,8 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command, Filter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from os import getenv
+from dotenv import load_dotenv
 
 import app.keyboards as kb
 from app.functions import format_act_count
@@ -14,8 +16,8 @@ from app.database.requests import (
     delete_item_from_all_carts,
     get_item_by_id, set_promo
 )
-from config import ADMINS
 
+load_dotenv()
 
 admin = Router()
 
@@ -55,12 +57,13 @@ class EditItem(StatesGroup):
     field = State()
     
     photo = State()
-    text = State()
+    price = State()
+    content = State()
 
 
 class AdminProtect(Filter):
     async def __call__(self, message: Message):
-        return message.from_user.id in ADMINS
+        return message.from_user.id in map(int, getenv('ADMINS').split())
 
 
 # Админ-панель
@@ -68,7 +71,7 @@ class AdminProtect(Filter):
 @admin.message(AdminProtect(), Command('apanel'))
 async def apanel(message: Message | CallbackQuery):
     if isinstance(message, Message):
-        await message.answer('возможные действия:', reply_markup=kb.apanel)
+        await message.answer('панелька 🎀', reply_markup=kb.apanel)
     else:
         await message.message.edit_text('панелька 🎀', reply_markup=kb.apanel)
 
@@ -84,6 +87,7 @@ async def add_promo(callback: CallbackQuery, state: FSMContext):
 @admin.message(AdminProtect(), Promo.promo_add, F.text)
 async def add_promo(message: Message, state: FSMContext):
     await state.set_state(Promo.promo_add_val)
+    
     await state.update_data(name=message.text)
     
     await message.answer('напишите количество активаций промокода')
@@ -91,17 +95,20 @@ async def add_promo(message: Message, state: FSMContext):
 
 @admin.message(AdminProtect(), Promo.promo_add_val, F.text)
 async def adding_promo(message: Message, state: FSMContext):
-    await state.update_data(amount=message.text)
-    
-    data = await state.get_data()
-    await set_promo(data)
-    
-    act = await format_act_count(int(data['amount']))
-    
-    await message.answer(f'промокод *{data['name']}* на *{act}* был успешно добавлен\\!', parse_mode='MarkdownV2')
-    await message.answer('главное меню 🎀', reply_markup=kb.main)
-    
-    await state.clear()
+    try:
+        await state.update_data(amount=int(message.text))
+        
+        data = await state.get_data()
+        await set_promo(data)
+        
+        act = await format_act_count(int(data['amount']))
+        
+        await message.answer(f'промокод *{data['name']}* на *{act}* был успешно добавлен\\!', parse_mode='MarkdownV2')
+        await message.answer('вы вернулись в главное меню 💌', reply_markup=await kb.kb_main(message.from_user.id))
+        
+        await state.clear()
+    except ValueError:
+        await message.answer("введите корректное количество")
 
 
 # Удаление промокода
@@ -117,10 +124,12 @@ async def del_promo(callback: CallbackQuery, state: FSMContext):
 
 @admin.callback_query(AdminProtect(), Promo.promo_del, F.data.startswith('promo_'))
 async def deleting_promo(callback: CallbackQuery, state: FSMContext):
-    await delete_promo(callback.data.split('_')[1])
+    promo = callback.data.split('_')[1]
     
-    await callback.message.edit_text('промокод успешно был удалён')
-    await callback.message.answer('вы вернулись в главное меню!', reply_markup=kb.main)
+    await delete_promo(promo)
+    
+    await callback.message.edit_text(f'промокод *{promo}* успешно был удалён', parse_mode='MarkdownV2')
+    await callback.message.answer('вы вернулись в главное меню 💌', reply_markup=await kb.kb_main(callback.from_user.id))
     
     await state.clear()
 
@@ -130,9 +139,10 @@ async def deleting_promo(callback: CallbackQuery, state: FSMContext):
 async def show_promos(callback: CallbackQuery):
     k = await kb.show_promo_codes()
     if len(k.inline_keyboard[0]) == 1:
-        await callback.message.edit_text('нет доступных промокодов', reply_markup=await kb.show_promo_codes())
+        msg_text = 'нет доступных промокодов'
     else:
-        await callback.message.edit_text('список всех доступных промокодов', reply_markup=await kb.show_promo_codes())
+        msg_text = 'список всех доступных промокодов'
+    await callback.message.edit_text(msg_text, reply_markup=await kb.show_promo_codes())
 
 
 # Рассылка
@@ -172,7 +182,7 @@ async def newsletter_message(callback: CallbackQuery, state: FSMContext):
             pass
         
     await callback.answer('рассылка успешно завершена!', show_alert=True)
-    await callback.message.answer('главное меню 🎀', reply_markup=kb.main)
+    await callback.message.answer('вы вернулись в главное меню 💌', reply_markup=await kb.kb_main(callback.from_user.id))
     
     await state.clear()
 
@@ -188,7 +198,7 @@ async def add_item(callback: CallbackQuery, state: FSMContext):
 
 @admin.callback_query(AdminProtect(), AddItem.category, F.data.startswith('category_'))
 async def add_item_name(callback: CallbackQuery, state: FSMContext):
-    await state.update_data(category=callback.data.split('_')[1])
+    await state.update_data(category=int(callback.data.split('_')[1]))
     await state.set_state(AddItem.name)
     
     await callback.message.edit_text('введите название товара')
@@ -225,13 +235,13 @@ async def error_photo(message: Message):
 
 @admin.message(AdminProtect(), AddItem.price)
 async def add_item_price(message: Message, state: FSMContext):
-    await state.update_data(price=message.text)
+    await state.update_data(price=int(message.text))
     
     data = await state.get_data()
     await set_item(data)
     
     await message.answer('вы успешно добавили товар!')
-    await message.answer('главное меню 🎀', reply_markup=kb.main)
+    await message.answer('вы вернулись в главное меню 💌', reply_markup=await kb.kb_main(message.from_user.id))
     
     await state.clear()
 
@@ -252,7 +262,8 @@ async def delete_item_from_category(callback: CallbackQuery, state: FSMContext):
     await state.set_state(DeleteItem.item_id)
     
     await callback.answer('')
-    category_id = callback.data.split('_')[1]
+    
+    category_id = int(callback.data.split('_')[1])
     await state.update_data(category_id=category_id)
     
     if await check_items_in_category(category_id):
@@ -269,7 +280,7 @@ async def alert_delete(callback: CallbackQuery, state: FSMContext):
     
     await callback.answer('')
     
-    item = await get_item_by_id(callback.data.split('_')[1])
+    item = await get_item_by_id(int(callback.data.split('_')[1]))
     await state.update_data(item_id=item.id)
     
     await callback.message.edit_text(f'вы точно хотите удалить товар {item.name}?', 
@@ -285,8 +296,8 @@ async def deletion_item(callback: CallbackQuery, state: FSMContext):
         await delete_item_from_bot(item_id)
         await delete_item_from_all_carts(item_id)
         
-        await callback.answer('вы успешно удалили товар!')
-        await callback.message.answer('главное меню 🎀', reply_markup=kb.main)
+        await callback.message.answer('вы успешно удалили товар!')
+        await callback.message.answer('вы вернулись в главное меню 💌', reply_markup=await kb.kb_main(callback.from_user.id))
         
         await state.clear()
     else:
@@ -328,12 +339,12 @@ async def edit_choose_category(callback: CallbackQuery, state: FSMContext):
             reply_markup=await kb.items(category_id))
     else:
         await callback.message.edit_text('нет товаров для изменения', 
-                                        reply_markup=await kb.items(callback.data.split('_')[1]))
+                                        reply_markup=await kb.items(category_id))
 
 
 @admin.callback_query(AdminProtect(), EditItem.item_id, F.data.startswith('item_'))
 async def edition_field(callback: CallbackQuery, state: FSMContext):
-    await state.update_data(item_id=callback.data.split('_')[1])
+    await state.update_data(item_id=int(callback.data.split('_')[1]))
     await state.set_state(EditItem.field)
     
     await callback.answer('')
@@ -349,38 +360,53 @@ async def edition_item(callback: CallbackQuery, state: FSMContext):
     if callback.data == 'photo':
         await state.set_state(EditItem.photo)
         await callback.message.edit_text('вставьте фотографию')
+    elif callback.data == 'price':
+        await state.set_state(EditItem.price)
+        await callback.message.edit_text('напишите новую цену товара')
     else:
-        await state.set_state(EditItem.text)
+        await state.set_state(EditItem.content)
         if callback.data == 'name':
-            await callback.message.edit_text('напишите измененное название товара')
-        elif callback.data == 'description':
-            await callback.message.edit_text('напишите измененное описание товара')
-        else:
-            await callback.message.edit_text('напишите измененную цену товара')
+            await callback.message.edit_text('напишите новое название товара')
+            await state.update_data(pole='название')
+        else: 
+            await callback.message.edit_text('напишите новое описание товара')
+            await state.update_data(pole='описание')
 
 
 @admin.message(AdminProtect(), EditItem.photo, F.photo)
 async def edition_photo(message: Message, state: FSMContext):
-    await state.update_data(text=message.photo[-1].file_id)
+    await state.update_data(content=message.photo[-1].file_id)
     
     data = await state.get_data()
     await edit_item(data)
     
-    await message.answer('вы успешно изменили товар!')
-    await message.answer('главное меню 🎀', reply_markup=kb.main)
+    await message.answer('вы успешно изменили фотографию товара!')
+    await message.answer('вы вернулись главное меню 💌', reply_markup=await kb.kb_main(message.from_user.id))
     
     await state.clear()
 
 
-@admin.message(AdminProtect(), EditItem.text)
+@admin.message(AdminProtect(), EditItem.price)
 async def edition_text(message: Message, state: FSMContext):
-    await state.update_data(text=message.text)
-    
+    await state.update_data(content=int(message.text))
     data = await state.get_data()
+    
     await edit_item(data)
     
-    await message.answer('вы успешно изменили товар!')
-    await message.answer('главное меню 🎀', reply_markup=kb.main)
+    await message.answer('вы успешно изменили цену товара!')
+    await message.answer('вы вернулись в главное меню 💌', reply_markup=await kb.kb_main(message.from_user.id))
     
     await state.clear()
+
+
+@admin.message(AdminProtect(), EditItem.content)
+async def edition_text(message: Message, state: FSMContext):
+    await state.update_data(content=message.text)
+    data = await state.get_data()
     
+    await edit_item(data)
+    
+    await message.answer(f'вы успешно изменили {data['pole']} товара!')
+    await message.answer('вы вернулись в главное меню 💌', reply_markup=await kb.kb_main(message.from_user.id))
+    
+    await state.clear()

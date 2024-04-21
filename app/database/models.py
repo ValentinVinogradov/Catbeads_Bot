@@ -1,9 +1,14 @@
 from sqlalchemy import BigInteger, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship, DeclarativeBase
 from sqlalchemy.ext.asyncio import AsyncAttrs, async_sessionmaker, create_async_engine
+from dotenv import load_dotenv
+from os import getenv
+
 from typing import List
-from config import ECHO, ENGINE
-engine = create_async_engine(url=ENGINE, echo=ECHO)
+
+load_dotenv()
+
+engine = create_async_engine(url=getenv('ENGINE'), echo=True)
 
 async_session = async_sessionmaker(engine)
 
@@ -40,6 +45,7 @@ class Item(Base):
 
     category_rel: Mapped['Category'] = relationship(back_populates='item_rel')
     cart_rel: Mapped[List['Cart']] = relationship(back_populates='item_rel')
+
 
 class Cart(Base):
     __tablename__ = 'cart'
