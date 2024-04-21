@@ -4,7 +4,6 @@ from aiogram.filters import Command, Filter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from os import getenv
-from dotenv import load_dotenv
 
 import app.keyboards as kb
 from app.functions import format_act_count
@@ -17,7 +16,6 @@ from app.database.requests import (
     get_item_by_id, set_promo
 )
 
-load_dotenv()
 
 admin = Router()
 
@@ -296,6 +294,7 @@ async def deletion_item(callback: CallbackQuery, state: FSMContext):
         await delete_item_from_bot(item_id)
         await delete_item_from_all_carts(item_id)
         
+        await callback.answer('')
         await callback.message.answer('вы успешно удалили товар!')
         await callback.message.answer('вы вернулись в главное меню 💌', reply_markup=await kb.kb_main(callback.from_user.id))
         
@@ -306,7 +305,6 @@ async def deletion_item(callback: CallbackQuery, state: FSMContext):
         category_id = data['category_id']
         await callback.message.edit_text('выберите товар, который хотите удалить',
             reply_markup=await kb.items(category_id))
-    
 
 
 # Изменение данных о товаре

@@ -6,7 +6,6 @@ from aiogram.filters import CommandStart
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from os import getenv
-from dotenv import load_dotenv
 
 import app.keyboards as kb
 from app.database.requests import (
@@ -64,7 +63,6 @@ async def cmd_start(message: Message | CallbackQuery, state:FSMContext):
         await message.message.edit_text('вы вернулись в ' + main_menu_text, 
                                         reply_markup=await kb.kb_main(message.from_user.id))
         await state.update_data(to_menu=True)
-    
 
 
 @router.message(F.text.startswith('/'))

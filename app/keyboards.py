@@ -5,7 +5,6 @@ from aiogram.types import (
 
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 from os import getenv
-from dotenv import load_dotenv
 
 from app.database.requests import (
     get_categories, 
@@ -13,9 +12,6 @@ from app.database.requests import (
     get_promo,
     check_items_in_category
 )
-
-# from config import ADMINS
-
 
 edit = InlineKeyboardMarkup(inline_keyboard=[
     [InlineKeyboardButton(text='название', callback_data='name'),
@@ -74,62 +70,6 @@ async def to_apanel_or_main(place_to: str = 'to_main'):
     return keyboard.adjust(1).as_markup()
 
 
-async def confirmation(state: str):
-    keyboard = InlineKeyboardBuilder()
-    
-    if state == 'newsletter':
-        keyboard.add(InlineKeyboardButton(text='да, отправить', callback_data='confirmation'))
-    else:
-        keyboard.add(InlineKeyboardButton(text='да, удалить', callback_data='confirmation'))
-    keyboard.add(InlineKeyboardButton(text='<< нет, вернуться назад', callback_data='cancel'))
-    
-    return keyboard.adjust(1).as_markup()
-
-
-async def promo_code(is_writing: bool = True):
-    keyboard = InlineKeyboardBuilder()
-    
-    if is_writing:
-        keyboard.add(InlineKeyboardButton(text='дальше >>', callback_data='promo_skip'))
-    else:
-        keyboard.add(InlineKeyboardButton(text='да, ввести промокод',
-                                            callback_data='promo_write'))
-        keyboard.add(InlineKeyboardButton(text='нет',
-                                            callback_data='promo_skip'))
-    
-    return keyboard.adjust(1).as_markup()
-
-
-async def ordering(is_customizing: bool = True):
-    keyboard = InlineKeyboardBuilder()
-    
-    if is_customizing:
-        keyboard.add(InlineKeyboardButton(text='оформить заказ', callback_data='custom_ordering'))
-        keyboard.add(InlineKeyboardButton(text=' << назад', callback_data='yours'))
-    else:
-        keyboard.add(InlineKeyboardButton(text='оформить заказ', callback_data='ordering'))
-        keyboard.add(InlineKeyboardButton(text='<< назад', callback_data='to_main'))
-    
-    return keyboard.adjust(2).as_markup(resize_keyboard=True)
-
-
-async def del_from_cart(cart_id):
-    keyboard = InlineKeyboardBuilder()
-    
-    keyboard.add(InlineKeyboardButton(text='удалить из корзины', callback_data=f'delete_{cart_id}'))
-    
-    return keyboard.adjust(2).as_markup()
-
-
-async def cart(cart_id):
-    keyboard = InlineKeyboardBuilder()
-    
-    keyboard.add(InlineKeyboardButton(text='добавить в корзину', callback_data=f'cart_{cart_id}'))
-    keyboard.add(InlineKeyboardButton(text='<< назад', callback_data='to_spec_category'))
-    
-    return keyboard.adjust(2).as_markup()
-
-
 async def categories(place_from:str = 'catalog'):
     all_categories = await get_categories()
     keyboard = InlineKeyboardBuilder()
@@ -159,6 +99,50 @@ async def items(category_id: int):
     return keyboard.adjust(1).as_markup()
 
 
+async def cart(cart_id):
+    keyboard = InlineKeyboardBuilder()
+    
+    keyboard.add(InlineKeyboardButton(text='добавить в корзину', callback_data=f'cart_{cart_id}'))
+    keyboard.add(InlineKeyboardButton(text='<< назад', callback_data='to_spec_category'))
+    
+    return keyboard.adjust(2).as_markup()
+
+
+async def del_from_cart(cart_id):
+    keyboard = InlineKeyboardBuilder()
+    
+    keyboard.add(InlineKeyboardButton(text='удалить из корзины', callback_data=f'delete_{cart_id}'))
+    
+    return keyboard.adjust(2).as_markup()
+
+
+async def promo_code(is_writing: bool = True):
+    keyboard = InlineKeyboardBuilder()
+    
+    if is_writing:
+        keyboard.add(InlineKeyboardButton(text='дальше >>', callback_data='promo_skip'))
+    else:
+        keyboard.add(InlineKeyboardButton(text='да, ввести промокод',
+                                            callback_data='promo_write'))
+        keyboard.add(InlineKeyboardButton(text='нет',
+                                            callback_data='promo_skip'))
+    
+    return keyboard.adjust(1).as_markup()
+
+
+async def ordering(is_customizing: bool = True):
+    keyboard = InlineKeyboardBuilder()
+    
+    if is_customizing:
+        keyboard.add(InlineKeyboardButton(text='оформить заказ', callback_data='custom_ordering'))
+        keyboard.add(InlineKeyboardButton(text=' << назад', callback_data='yours'))
+    else:
+        keyboard.add(InlineKeyboardButton(text='оформить заказ', callback_data='ordering'))
+        keyboard.add(InlineKeyboardButton(text='<< назад', callback_data='to_main'))
+    
+    return keyboard.adjust(2).as_markup(resize_keyboard=True)
+
+
 async def show_promo_codes():
     keyboard = InlineKeyboardBuilder()
     
@@ -170,3 +154,15 @@ async def show_promo_codes():
     keyboard.add(InlineKeyboardButton(text='<< назад', callback_data='to_apanel'))
     
     return keyboard.adjust(2).as_markup()
+
+
+async def confirmation(state: str):
+    keyboard = InlineKeyboardBuilder()
+    
+    if state == 'newsletter':
+        keyboard.add(InlineKeyboardButton(text='да, отправить', callback_data='confirmation'))
+    else:
+        keyboard.add(InlineKeyboardButton(text='да, удалить', callback_data='confirmation'))
+    keyboard.add(InlineKeyboardButton(text='<< нет, вернуться назад', callback_data='cancel'))
+    
+    return keyboard.adjust(1).as_markup()
