@@ -372,13 +372,13 @@ async def order_items(callback: CallbackQuery, state: FSMContext):
             notification_text += '*бесплатная*\n\nколечко в подарок: *да*'
         
         if 'promo_code' in data:
-            notification_text += f'\n\nбыл использован промокод: *{data['promo_code']}* на скидку *{await format_promo(data['promo_code'])}**%*'
+            notification_text += f'\n\nбыл использован промокод: *{data["promo_code"]}* на скидку *{await format_promo(data["promo_code"])}**%*'
         else:
             notification_text += '\n\nпромокод *не* *был* *использован*'
 
     else:
         data = await state.get_data()
-        order_text = f'*{data['yours_category']}* на заказ'
+        order_text = f'*{data["yours_category"]}* на заказ'
         final_text += f'{order_text}\n\nстоимость украшения и детали обсудите с *@i17bs43kzkp0*\n\nблагодарим за ваш заказ\\! будем рады видеть вас снова\\!'
         await callback.message.answer(final_text, parse_mode='MarkdownV2')
         await callback.message.answer('главное меню 💌', reply_markup=await kb.kb_main(callback.from_user.id))
